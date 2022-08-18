@@ -50,7 +50,7 @@
 <meta property="og:image" content="https://pic2.zhimg.com/80/v2-4a267c85e093dff6aeeaa03a1d139fd5_720w.jpg">
 <meta property="og:image" content="https://pic4.zhimg.com/80/v2-9b778255d2436bf0a41762608717fb07_720w.jpg">
 <meta property="article:published_time" content="2022-08-18T05:31:15.000Z">
-<meta property="article:modified_time" content="2022-08-18T05:33:12.169Z">
+<meta property="article:modified_time" content="2022-08-18T05:50:29.466Z">
 <meta property="article:author" content="Anthony">
 <meta property="article:tag" content="point cloud registration">
 <meta name="twitter:card" content="summary">
@@ -219,7 +219,7 @@
               <span class="post-meta-item-text">Posted on</span>
               
 
-              <time title="Created: 2022-08-18 13:31:15 / Modified: 13:33:12" itemprop="dateCreated datePublished" datetime="2022-08-18T13:31:15+08:00">2022-08-18</time>
+              <time title="Created: 2022-08-18 13:31:15 / Modified: 13:50:29" itemprop="dateCreated datePublished" datetime="2022-08-18T13:31:15+08:00">2022-08-18</time>
             </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -237,14 +237,14 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">Symbols count in article: </span>
-              <span>6k</span>
+              <span>6.1k</span>
             </span>
             <span class="post-meta-item" title="Reading time">
               <span class="post-meta-item-icon">
                 <i class="far fa-clock"></i>
               </span>
                 <span class="post-meta-item-text">Reading time &asymp;</span>
-              <span>5 mins.</span>
+              <span>6 mins.</span>
             </span>
 
         </div>
@@ -267,20 +267,23 @@
 <h2 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h2><blockquote>
 <p>点云配准是一项广泛应用于增强现实，三维重建，和自动驾驶等计算领域的基本任务。它的目标是预测对齐两个点云的3D刚性变换，这两个点云可能会被偏好性遮挡和被噪声污染。</p>
 </blockquote>
-<p><img src="https://pic3.zhimg.com/80/v2-d8ad118ee15dd92777d0882ad483bbea_720w.jpg" alt="img">增强现实【1】</p>
-<p><img src="https://pic4.zhimg.com/80/v2-efc68179220e22a5201fdb1e12d8d72f_720w.jpg" alt="img">3D重建【2】</p>
-<p><img src="https://pic1.zhimg.com/80/v2-154ef9094a8e78b6f92506aefbcaf5cc_720w.jpg" alt="img">自动驾驶【3】</p>
+<p><img src="https://pic3.zhimg.com/80/v2-d8ad118ee15dd92777d0882ad483bbea_720w.jpg" alt="img"></p>
+<p>​                                                                                                                            增强现实【1】</p>
+<p><img src="https://pic4.zhimg.com/80/v2-efc68179220e22a5201fdb1e12d8d72f_720w.jpg" alt="img"></p>
+<p>​                                                                                                                             3D重建【2】</p>
+<p><img src="https://pic1.zhimg.com/80/v2-154ef9094a8e78b6f92506aefbcaf5cc_720w.jpg" alt="img"></p>
+<p>​                                                                                                                             自动驾驶【3】</p>
 <h2 id="以往方法以及缺陷"><a href="#以往方法以及缺陷" class="headerlink" title="以往方法以及缺陷"></a>以往方法以及缺陷</h2><h3 id="基于对应点匹配的方法"><a href="#基于对应点匹配的方法" class="headerlink" title="基于对应点匹配的方法"></a>基于对应点匹配的方法</h3><blockquote>
 <p>大多数基于对应匹配的方法通过交替两个步骤来解决配准问题：(1)建立源和参考点云之间的对应关系；(2)计算对应关系之间的最小二乘刚性变换。</p>
 </blockquote>
-<p>寻找对应点首先需要知道一个初始的旋转平移变换，这个旋转平移变换是由粗配准得到的，粗配准目前还是一个难题，常见的粗配准搜索策略有<strong>4PC</strong>等。在知道了初始的旋转平移变换的前提下，我们所source cloud使用这个初始的旋转平移变换，得到一个变换之后的点云，然后将这个变换后的点云和target cloud进行比较，如果这两个点云之间存在点对{x,y}且xy之间的距离小于<strong>人为设定的</strong>阈值，那么我们就将{x,y}看做对应点。这就建立了源和参考点云之间的对应关系。</p>
+<p>寻找对应点首先需要知道一个初始的旋转平移变换，这个旋转平移变换是由粗配准得到的，粗配准目前还是一个难题，常见的粗配准搜索策略有<strong>4PC</strong>等。在知道了初始的旋转平移变换的前提下，我们对source cloud使用这个初始的旋转平移变换，得到一个变换之后的点云，然后将这个变换后的点云和target cloud进行比较，如果这两个点云之间存在点对{x,y}且xy之间的距离小于<strong>人为设定的</strong>阈值，那么我们就将{x,y}看做对应点。这就建立了源和参考点云之间的对应关系。</p>
 <p>求解最小二乘刚性变换就不需要多说了，本质上就是最小二乘法问题。也即找到最好的旋转平移变换使得我们认为的对应点可以对应上。</p>
 <blockquote>
-<p>常见的基于对应点匹配的方法包括ICP以及其的后续变体。ICP的变体通过<strong>检测关键点</strong>或<strong>加权对应</strong>来提高性能。然而，由于第一步的<strong>非凸性</strong>，它们往往会陷入局部极小。为了解决这个问题，<strong>Go-ICP使用分支定界</strong>策略来搜索转换空间，但代价是速度慢得多。最近提出的对称ICP[22]通过设计目标函数来改进原有的ICP。与使用空间距离不同，PFH[25]和FPFH[24]设计了旋转不变的描述符，并从手工制作的特征中建立对应关系。为了避免RANSAC[8]和最近邻的计算，FGR[40]使用交替优化技术来加速迭代。</p>
+<p>常见的基于对应点匹配的方法包括ICP以及其的后续变体。ICP的变体通过<strong>检测关键点</strong>或<strong>加权对应</strong>来提高性能。然而，由于第一步的<strong>非凸性</strong>，它们往往会收敛到局部最小值。为了解决这个问题，<strong>Go-ICP使用分支定界</strong>策略来搜索转换空间，但代价是速度慢得多。最近提出的对称ICP[22]通过设计目标函数来改进原有的ICP。与使用空间距离不同，PFH[25]和FPFH[24]设计了旋转不变的描述符，并从手工制作的特征中建立对应关系。为了避免RANSAC[8]和最近邻的计算，FGR[40]使用交替优化技术来加速迭代。</p>
 </blockquote>
 <p><strong>非凸问题</strong>常常会使梯度下降陷入局部最小值，如图：</p>
 <p><img src="https://pic1.zhimg.com/80/v2-15a089f63ce00c1c1cce3a37970aa0f8_720w.jpg" alt="img"></p>
-<p>从不同的初始点进行梯度下降，函数会收敛到局部最小值，而不一定是全局最小值。</p>
+<p>本质上，关于六自由度(旋转和平移)的3D点云配准问题是典型的非凸优化问题，其目标函数在六维可行域空间中具有多个波峰波谷，即优化求解过程中受初始变换矩阵影响，容易陷入局部最优解。</p>
 <p><strong>RANSAC</strong>算法通过反复随机选取数据来预测模型，以避免数据集中离群值的影响。</p>
 <blockquote>
 <p>最近的基于DL的方法用CNN替换了<strong>手工制作的特征描述符。</strong>深度最近点(DCP)的方法可以确定学习特征的对应关系。DeepGMR集成了<strong>高斯混合模型</strong>(GMM)来学习姿势不变的点到GMM 的对应。然而，他们没有考虑到<strong>输入的偏差性</strong>，PRNet、RPMNet和IDAM被用来缓解这一问题，方法是使用带有<strong>Sinkhorn归一化</strong>的Gumbel-Softmax或卷积神经网络(CNN)来计算匹配矩阵。然而，这些方法要求输入具有<strong>独特的局部几何结构</strong>来提取可靠的稀疏3D特征点。</p>
@@ -288,10 +291,14 @@
 <p><strong>手工制作的特征描述符</strong>即人工标注，人工标注的意思即人为提取出数据中的特征，这些特征多数是人所感兴趣的，浅层的特征，然而人工提取的特征难免会有偏见以及想当然的成分，因此才提出了用CNN来提取更深层次的特征。</p>
 <p><strong>高斯混合模型</strong>即使用多维的高斯分布来描述多维特征</p>
 <h3 id="基于对应点匹配的方法的缺陷"><a href="#基于对应点匹配的方法的缺陷" class="headerlink" title="基于对应点匹配的方法的缺陷"></a>基于对应点匹配的方法的缺陷</h3><ol>
-<li>ICP方法很容易就收敛到局部最小值，GO-ICP虽然避免了这一点，但是速度太慢了。</li>
-<li>所有基于对应点匹配的方法都对源点云和目标点云的初始位置敏感，因此并不总是能得到很好的结果。</li>
-<li>使用了深度学习提取特征的基于对应点匹配的方法要求源点云具有特定的几何结构以便更好地完成稀疏点的匹配，他们不能利用重叠点云的几何知识，这导致了只有有限的对应点可以完成匹配，或者导致很差的匹配。</li>
-<li>变换仅仅由匹配的稀疏点以及其匹配的邻居计算，这导致点云中其他的点并没有参与到配准过程中。</li>
+<li><p>ICP方法很容易就收敛到局部最小值，GO-ICP虽然避免了这一点，但是速度太慢了。</p>
+</li>
+<li><p>所有基于对应点匹配的方法都对源点云和目标点云的初始位置敏感，因此并不总是能得到很好的结果。</p>
+</li>
+<li><p>使用了深度学习提取特征的基于对应点匹配的方法要求源点云具有特定的几何结构以便更好地完成稀疏点的匹配，他们不能利用重叠点云的几何知识，这导致了只有有限的对应点可以完成匹配，或者导致很差的匹配。</p>
+</li>
+<li><p>变换仅仅由匹配的稀疏点以及其匹配的邻居计算，这导致点云中其他的点并没有参与到配准过程中。</p>
+</li>
 </ol>
 <h3 id="基于全局的配准方法"><a href="#基于全局的配准方法" class="headerlink" title="基于全局的配准方法"></a>基于全局的配准方法</h3><blockquote>
 <p>与基于对应匹配的方法不同，基于全局特征的方法是从没有对应关系的两个输入的整个点云(包括重叠和非重叠区域)计算刚性变换。即，通过神经网络聚合全局特征来计算刚性变换。PointNetLK开创了这些方法，它将PointNet与Lucas&amp;Kanade(LK)算法适配为<strong>递归神经网络</strong>。PCRNet通过将LK算法与回归网络交替使用来提高对噪声的稳健性。此外，FMR增加了译码分支，并优化了输入的全局特征距离。</p>
@@ -364,7 +371,7 @@
 <blockquote>
 <p>ModelNet40包含来自40个类别的CAD模型。以前的工作使用的是来自PointNet[21]的经过处理的数据，该方法用于配准任务有两个问题：(1)对于每个对象，它只包含从CAD模型采样的2,048个点。然而，在现实场景中，X中的点在Y中没有精确的对应。对该数据的训练会导致过拟合问题，甚至增加噪声或重采样。(2)它涉及一些轴对称类别，包括瓶、碗、锥、杯、花盆、灯、帐篷和花瓶，图4显示了一些例子。然而，为轴对称数据提供固定的地面真实是不合逻辑的，因为可以获得对<strong>称轴上的任意角度</strong>以进行准确配准。将标签固定在对称轴上没有任何意义</p>
 </blockquote>
-<p>我的理解就是有对称轴的话太好做了，如果标签在对称轴上可能只需要对对称轴完成匹配就是一个很好的精匹配。</p>
+<p>个人的理解是：给具有对称轴的数据建立ground-truth是不合理的，因为对称轴数据是可以旋转的，在对称轴上旋转任意角度的结果都可以说是一个良好的配准。而仅仅将标签固定在对称轴上，即只配准对称轴也是显然不合理的。</p>
 <p>不同于以往的数据采集方式</p>
 <blockquote>
 <p>在本文中，我们提出了一种合适的数据生成方式。具体地说，我们用不同的随机种子从每个CAD模型中均匀采样2048个点40次，然后随机选择其中的2个作为X和Y。它保证我们可以获得每个对象的C240=780个组合。我们将从CAD模型中只采样一次的数据表示为一次采样(OS)数据，并将我们的数据称为两次采样(TS)数据。此外，我们简单地去掉了轴对称范畴。</p>
