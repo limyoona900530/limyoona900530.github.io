@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="点云配准是许多计算领域的一项关键任务。以前的基于对应匹配的方法要求输入具有不同的几何结构，以根据逐点稀疏特征匹配来适应3D刚性变换。然而，变换的准确性在很大程度上依赖于提取的特征的质量，这些特征容易出现偏好性和噪声方面的错误。此外，它们不能利用所有重叠区域的几何知识。另一方面，以往的基于全局特征的配准方法可以利用整个点云进行配准，但是在聚合全局特征时忽略了非重叠点的负面影响。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="【perusal】OMNet: Learning Overlapping Mask for Partial-to-Partial Point Cloud Registration">
+<meta property="og:url" content="http://example.com/2022/08/18/%E3%80%90perusal%E3%80%91OMNet-Learning-Overlapping-Mask-for-Partial-to-Partial-Point-Cloud-Registration/index.html">
+<meta property="og:site_name" content="Anthony&#39;s blog">
+<meta property="og:description" content="点云配准是许多计算领域的一项关键任务。以前的基于对应匹配的方法要求输入具有不同的几何结构，以根据逐点稀疏特征匹配来适应3D刚性变换。然而，变换的准确性在很大程度上依赖于提取的特征的质量，这些特征容易出现偏好性和噪声方面的错误。此外，它们不能利用所有重叠区域的几何知识。另一方面，以往的基于全局特征的配准方法可以利用整个点云进行配准，但是在聚合全局特征时忽略了非重叠点的负面影响。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://pic3.zhimg.com/80/v2-d8ad118ee15dd92777d0882ad483bbea_720w.jpg">
+<meta property="og:image" content="https://pic4.zhimg.com/80/v2-efc68179220e22a5201fdb1e12d8d72f_720w.jpg">
+<meta property="og:image" content="https://pic1.zhimg.com/80/v2-154ef9094a8e78b6f92506aefbcaf5cc_720w.jpg">
+<meta property="og:image" content="https://pic1.zhimg.com/80/v2-15a089f63ce00c1c1cce3a37970aa0f8_720w.jpg">
+<meta property="og:image" content="https://pic2.zhimg.com/80/v2-ab01bce2b9db68708e0c0f861317d2ed_720w.jpg">
+<meta property="og:image" content="https://pic3.zhimg.com/80/v2-3b4b43fad7df653dd7f2ec40d6fb9bfa_720w.png">
+<meta property="og:image" content="https://pic3.zhimg.com/80/v2-4863c6c6f18358ccec150f3fcd586f16_720w.jpg">
+<meta property="og:image" content="https://pic3.zhimg.com/80/v2-4b9cde7cf130650c8227ba6c83d9a0ae_720w.jpg">
+<meta property="og:image" content="https://pic2.zhimg.com/80/v2-b3a227f3c42f2ad12cc3948c4552cac1_720w.png">
+<meta property="og:image" content="https://pic2.zhimg.com/80/v2-ae8c39fdc1a6d46472eae0ea2fb257bd_720w.jpg">
+<meta property="og:image" content="https://pic3.zhimg.com/80/v2-ce192d938680a62874ea63dab2bf814a_720w.png">
+<meta property="og:image" content="https://pic3.zhimg.com/80/v2-1b99fc41dfcbe334770c8e704f7928ea_720w.png">
+<meta property="og:image" content="https://pic1.zhimg.com/80/v2-da995ae7f106367d8eac11124e7e5d98_720w.png">
+<meta property="og:image" content="https://pic4.zhimg.com/80/v2-cd5c974ad8902dbd5e6d4b9617966cf3_720w.jpg">
+<meta property="og:image" content="https://pic1.zhimg.com/80/v2-dfb4771239f44e66aa3f8e6610391134_720w.png">
+<meta property="og:image" content="https://pic3.zhimg.com/80/v2-9b9efab230942eceb84f0c910ae5990e_720w.jpg">
+<meta property="og:image" content="https://pic2.zhimg.com/80/v2-a33375e3f57ecdf4d6bee549e3e8b0c9_720w.jpg">
+<meta property="og:image" content="https://pic1.zhimg.com/80/v2-033e5dafcdae353c5925c6e6c41abbdc_720w.jpg">
+<meta property="og:image" content="https://pic4.zhimg.com/80/v2-7f3a4b48cec3c699b4164cf6f34ea303_720w.jpg">
+<meta property="og:image" content="https://pic3.zhimg.com/80/v2-547b705714c8af3b68cecc09bc65fdd6_720w.jpg">
+<meta property="og:image" content="https://pic2.zhimg.com/80/v2-4a267c85e093dff6aeeaa03a1d139fd5_720w.jpg">
+<meta property="og:image" content="https://pic4.zhimg.com/80/v2-9b778255d2436bf0a41762608717fb07_720w.jpg">
+<meta property="article:published_time" content="2022-08-18T05:31:15.000Z">
+<meta property="article:modified_time" content="2022-08-18T05:33:12.169Z">
+<meta property="article:author" content="Anthony">
+<meta property="article:tag" content="point cloud registration">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://pic3.zhimg.com/80/v2-d8ad118ee15dd92777d0882ad483bbea_720w.jpg">
+
+<link rel="canonical" href="http://example.com/2022/08/18/%E3%80%90perusal%E3%80%91OMNet-Learning-Overlapping-Mask-for-Partial-to-Partial-Point-Cloud-Registration/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>【perusal】OMNet: Learning Overlapping Mask for Partial-to-Partial Point Cloud Registration | Anthony's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Anthony's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Welcome</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+        <li class="menu-item menu-item-commonweal">
+
+    <a href="/404/" rel="section"><i class="fa fa-heartbeat fa-fw"></i>Commonweal 404</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/08/18/%E3%80%90perusal%E3%80%91OMNet-Learning-Overlapping-Mask-for-Partial-to-Partial-Point-Cloud-Registration/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Anthony">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Anthony's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          【perusal】OMNet: Learning Overlapping Mask for Partial-to-Partial Point Cloud Registration
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2022-08-18 13:31:15 / Modified: 13:33:12" itemprop="dateCreated datePublished" datetime="2022-08-18T13:31:15+08:00">2022-08-18</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/CV/" itemprop="url" rel="index"><span itemprop="name">CV</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="Symbols count in article">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">Symbols count in article: </span>
+              <span>6k</span>
+            </span>
+            <span class="post-meta-item" title="Reading time">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">Reading time &asymp;</span>
+              <span>5 mins.</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <blockquote>
+<p>点云配准是许多计算领域的一项关键任务。以前的基于对应匹配的方法要求输入具有不同的几何结构，以根据逐点稀疏特征匹配来适应3D刚性变换。然而，变换的准确性在很大程度上依赖于提取的特征的质量，这些特征容易出现偏好性和噪声方面的错误。此外，它们不能利用所有重叠区域的几何知识。另一方面，以往的基于全局特征的配准方法可以利用整个点云进行配准，但是在聚合全局特征时忽略了非重叠点的负面影响。</p>
+</blockquote>
+<span id="more"></span>
+
+<blockquote>
+<p>本文提出了一种基于全局特征的局部-局部点云配准迭代网络OMNet。我们学习重叠模板来拒绝非重叠区域，这将部分到部分的配准转化为相同形状的配准。此外，以前使用的数据仅从每个对象的CAD模型中采样一次，从而产生源和参考的相同点云。我们提出了一种更实用的数据生成方式，即对CAD模型进行两次采样作为源和参考，避免了以前普遍存在的过拟合问题。实验结果表明，与传统方法和基于深度学习的方法相比，我们的方法取得了最好的性能。</p>
+</blockquote>
+<h2 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h2><blockquote>
+<p>点云配准是一项广泛应用于增强现实，三维重建，和自动驾驶等计算领域的基本任务。它的目标是预测对齐两个点云的3D刚性变换，这两个点云可能会被偏好性遮挡和被噪声污染。</p>
+</blockquote>
+<p><img src="https://pic3.zhimg.com/80/v2-d8ad118ee15dd92777d0882ad483bbea_720w.jpg" alt="img">增强现实【1】</p>
+<p><img src="https://pic4.zhimg.com/80/v2-efc68179220e22a5201fdb1e12d8d72f_720w.jpg" alt="img">3D重建【2】</p>
+<p><img src="https://pic1.zhimg.com/80/v2-154ef9094a8e78b6f92506aefbcaf5cc_720w.jpg" alt="img">自动驾驶【3】</p>
+<h2 id="以往方法以及缺陷"><a href="#以往方法以及缺陷" class="headerlink" title="以往方法以及缺陷"></a>以往方法以及缺陷</h2><h3 id="基于对应点匹配的方法"><a href="#基于对应点匹配的方法" class="headerlink" title="基于对应点匹配的方法"></a>基于对应点匹配的方法</h3><blockquote>
+<p>大多数基于对应匹配的方法通过交替两个步骤来解决配准问题：(1)建立源和参考点云之间的对应关系；(2)计算对应关系之间的最小二乘刚性变换。</p>
+</blockquote>
+<p>寻找对应点首先需要知道一个初始的旋转平移变换，这个旋转平移变换是由粗配准得到的，粗配准目前还是一个难题，常见的粗配准搜索策略有<strong>4PC</strong>等。在知道了初始的旋转平移变换的前提下，我们所source cloud使用这个初始的旋转平移变换，得到一个变换之后的点云，然后将这个变换后的点云和target cloud进行比较，如果这两个点云之间存在点对{x,y}且xy之间的距离小于<strong>人为设定的</strong>阈值，那么我们就将{x,y}看做对应点。这就建立了源和参考点云之间的对应关系。</p>
+<p>求解最小二乘刚性变换就不需要多说了，本质上就是最小二乘法问题。也即找到最好的旋转平移变换使得我们认为的对应点可以对应上。</p>
+<blockquote>
+<p>常见的基于对应点匹配的方法包括ICP以及其的后续变体。ICP的变体通过<strong>检测关键点</strong>或<strong>加权对应</strong>来提高性能。然而，由于第一步的<strong>非凸性</strong>，它们往往会陷入局部极小。为了解决这个问题，<strong>Go-ICP使用分支定界</strong>策略来搜索转换空间，但代价是速度慢得多。最近提出的对称ICP[22]通过设计目标函数来改进原有的ICP。与使用空间距离不同，PFH[25]和FPFH[24]设计了旋转不变的描述符，并从手工制作的特征中建立对应关系。为了避免RANSAC[8]和最近邻的计算，FGR[40]使用交替优化技术来加速迭代。</p>
+</blockquote>
+<p><strong>非凸问题</strong>常常会使梯度下降陷入局部最小值，如图：</p>
+<p><img src="https://pic1.zhimg.com/80/v2-15a089f63ce00c1c1cce3a37970aa0f8_720w.jpg" alt="img"></p>
+<p>从不同的初始点进行梯度下降，函数会收敛到局部最小值，而不一定是全局最小值。</p>
+<p><strong>RANSAC</strong>算法通过反复随机选取数据来预测模型，以避免数据集中离群值的影响。</p>
+<blockquote>
+<p>最近的基于DL的方法用CNN替换了<strong>手工制作的特征描述符。</strong>深度最近点(DCP)的方法可以确定学习特征的对应关系。DeepGMR集成了<strong>高斯混合模型</strong>(GMM)来学习姿势不变的点到GMM 的对应。然而，他们没有考虑到<strong>输入的偏差性</strong>，PRNet、RPMNet和IDAM被用来缓解这一问题，方法是使用带有<strong>Sinkhorn归一化</strong>的Gumbel-Softmax或卷积神经网络(CNN)来计算匹配矩阵。然而，这些方法要求输入具有<strong>独特的局部几何结构</strong>来提取可靠的稀疏3D特征点。</p>
+</blockquote>
+<p><strong>手工制作的特征描述符</strong>即人工标注，人工标注的意思即人为提取出数据中的特征，这些特征多数是人所感兴趣的，浅层的特征，然而人工提取的特征难免会有偏见以及想当然的成分，因此才提出了用CNN来提取更深层次的特征。</p>
+<p><strong>高斯混合模型</strong>即使用多维的高斯分布来描述多维特征</p>
+<h3 id="基于对应点匹配的方法的缺陷"><a href="#基于对应点匹配的方法的缺陷" class="headerlink" title="基于对应点匹配的方法的缺陷"></a>基于对应点匹配的方法的缺陷</h3><ol>
+<li>ICP方法很容易就收敛到局部最小值，GO-ICP虽然避免了这一点，但是速度太慢了。</li>
+<li>所有基于对应点匹配的方法都对源点云和目标点云的初始位置敏感，因此并不总是能得到很好的结果。</li>
+<li>使用了深度学习提取特征的基于对应点匹配的方法要求源点云具有特定的几何结构以便更好地完成稀疏点的匹配，他们不能利用重叠点云的几何知识，这导致了只有有限的对应点可以完成匹配，或者导致很差的匹配。</li>
+<li>变换仅仅由匹配的稀疏点以及其匹配的邻居计算，这导致点云中其他的点并没有参与到配准过程中。</li>
+</ol>
+<h3 id="基于全局的配准方法"><a href="#基于全局的配准方法" class="headerlink" title="基于全局的配准方法"></a>基于全局的配准方法</h3><blockquote>
+<p>与基于对应匹配的方法不同，基于全局特征的方法是从没有对应关系的两个输入的整个点云(包括重叠和非重叠区域)计算刚性变换。即，通过神经网络聚合全局特征来计算刚性变换。PointNetLK开创了这些方法，它将PointNet与Lucas&amp;Kanade(LK)算法适配为<strong>递归神经网络</strong>。PCRNet通过将LK算法与回归网络交替使用来提高对噪声的稳健性。此外，FMR增加了译码分支，并优化了输入的全局特征距离。</p>
+</blockquote>
+<h3 id="基于全局的配准方法的缺陷"><a href="#基于全局的配准方法的缺陷" class="headerlink" title="基于全局的配准方法的缺陷"></a>基于全局的配准方法的缺陷</h3><ol>
+<li>他们忽略了非重叠区域造成的负面影响</li>
+<li>他们不能配准部分-部分的输入</li>
+</ol>
+<h3 id="部分到部分的配准方法"><a href="#部分到部分的配准方法" class="headerlink" title="部分到部分的配准方法"></a>部分到部分的配准方法</h3><blockquote>
+<p>此方法将部分到部分点云的配准作为一个更现实的问题提出。特别是，PRNet将DCP扩展为迭代流水线，并通过检测关键点来解决输入的偏差性问题。此外，使用可学习的Gumble-Softmax来控制匹配矩阵的光滑性。RPMNet还利用Sinkhorn归一化来鼓励匹配矩阵的双射。<strong>但此方法仍只能用于稀疏点的匹配。</strong></p>
+</blockquote>
+<h2 id="OMNet"><a href="#OMNet" class="headerlink" title="OMNet"></a><strong>OMNet</strong></h2><p>整个流水线如下图所示，文中是拆解成四部分，我根据个人理解拆解成5部分，主要是把特征提取这一步分成了两步：</p>
+<ol>
+<li><strong>输入</strong>：输入源点云X 和参考点云Y，并且点云X 完成上一轮的刚性变换</li>
+<li><strong>各自特征提取：</strong>点云X,Y都需要通过MLP进行特征提取，先经过上一轮的掩码将关注点转移到重叠区域的点之后，经过最大池化得到两个点云的全局特征。</li>
+<li><strong>融合特征提取：</strong>将X的逐点特征和X的全局特征和Y的全局特征相连，再次MLP抽取混合特征</li>
+<li><strong>新的掩码预测：</strong>将旧的掩码和融合特征经过预测函数（待会说）之后，得到新的掩码</li>
+<li><strong>刚性变换预测：</strong>将旧的掩码和掩码预测函数过程中得到的特征和之前的混合特征来计算刚性变换。</li>
+</ol>
+<p><img src="https://pic2.zhimg.com/80/v2-ab01bce2b9db68708e0c0f861317d2ed_720w.jpg" alt="img"></p>
+<h3 id="输入"><a href="#输入" class="headerlink" title="输入"></a>输入</h3><p>输入点云X,并做出标准刚性变换得到源的输入。输入点云Y，得到参考的输入。</p>
+<h3 id="各自特征提取"><a href="#各自特征提取" class="headerlink" title="各自特征提取"></a>各自特征提取</h3><blockquote>
+<p>特征提取模块的目的是学习一个函数 f(·) ，该函数可以分别从源点云X和参考点云Y生成有特色的全局特征 FX 和 FY 。一个重要的要求是应该保持原始输入的方向和空间坐标，以便刚性变换可以根据这两个全局特征之间的差异进行估计。受PointNet的启发，在每次迭代中，输入˜Xi和Y的全局特征由下式给出</p>
+</blockquote>
+<p><img src="https://pic3.zhimg.com/80/v2-3b4b43fad7df653dd7f2ec40d6fb9bfa_720w.png" alt="img"></p>
+<blockquote>
+<p>其中 f(·) 表示多层感知器网络，其被馈送 Xi 和 Y 以产生逐点特征 fXi 和 fYi 。 MXi−1 和 MYi−1 是˜ Xi 和 Y 的重叠遮罩，这两个遮罩是由上一步生成的， Xi 和 Y 的逐点特征通过最大池化操作 MAX{·} 聚集，该操作可以处理任意数量的无序点。</p>
+</blockquote>
+<p><strong>重叠遮罩</strong>的作用是提取出两个点云的重叠部分，可以让他们格式统一</p>
+<p><img src="https://pic3.zhimg.com/80/v2-4863c6c6f18358ccec150f3fcd586f16_720w.jpg" alt="img"></p>
+<h3 id="融合特征提取"><a href="#融合特征提取" class="headerlink" title="融合特征提取"></a>融合特征提取</h3><p>这一步就是将X的逐点特征和X的全局特征和Y的全局特征相连，我个人的理解是这样就可以学习到XY的共同特征了，这样子就有利于后面重叠执照的预测，也就是把重叠的区域分割出来。</p>
+<h3 id="新的掩码预测"><a href="#新的掩码预测" class="headerlink" title="新的掩码预测"></a>新的掩码预测</h3><blockquote>
+<p>在局部到局部场景中，特别是包含噪声的场景中，输入点云X和Y之间存在非重叠区域。然而，它不仅对配准过程没有贡献，而且还干扰了全局特征提取。如上图所示。<br>在求解场景对齐的最近似矩阵时，传统的方法普遍<strong>采用RANSAC来寻找重叠点</strong>。遵循类似的思想，我们提出了一个掩码预测模块来自动分割重叠区域。参考PointNet，点分割只需要一个点云作为输入，并结合局部和全局知识。然而，重叠区域预测<strong>需要来自两个输入点云X和Y的额外几何信息</strong>。我们可以以简单而高效的方式实现这一点</p>
+</blockquote>
+<p><strong>采用RANSAC来寻找重叠点，</strong>遵循的思想就是，我们在这个方法中把非重叠点当成离群点。</p>
+<p>我们的掩码预测可以用此公式表示</p>
+<p><img src="https://pic3.zhimg.com/80/v2-4b9cde7cf130650c8227ba6c83d9a0ae_720w.jpg" alt="img"></p>
+<p>h表示重叠预测网络，它由几个卷积层和一个Softmax层组成</p>
+<h3 id="掩码预测的损失函数"><a href="#掩码预测的损失函数" class="headerlink" title="掩码预测的损失函数"></a>掩码预测的损失函数</h3><p>我们可以现在就去看看掩码预测的损失函数长什么样子</p>
+<blockquote>
+<p>掩模预测损失的目标是分割输入点云X和Y中的重叠区域。为了平衡正样本和负样本的贡献，在每次迭代处使用 <strong>frequency weighted softmax-cross-entropy loss</strong></p>
+</blockquote>
+<p><img src="https://pic2.zhimg.com/80/v2-b3a227f3c42f2ad12cc3948c4552cac1_720w.png" alt="img"></p>
+<blockquote>
+<p>其中， Mp 表示点属于重叠区域的概率， α 表示输入的重叠率。我们定义了假设的掩码标签 Mg 来表示两个输入的重叠区域，该区域是通过设置固定阈值(设置为0.1)来计算的，该阈值是针对通过ground-truth变换变换的源和参考之间的最近点距离而设置的。每个元素都是</p>
+</blockquote>
+<p><img src="https://pic2.zhimg.com/80/v2-ae8c39fdc1a6d46472eae0ea2fb257bd_720w.jpg" alt="img"></p>
+<blockquote>
+<p>当前掩码是基于前一个掩码估计的，因此每次迭代都需要重新计算标签</p>
+</blockquote>
+<p>损失函数是一个带有权重的交叉熵损失函数，并且权重和此类出现的频率相同（我也不知道为什么，按理来说不应该是少类的权重比较大嘛，有没有大佬可以解释一下）</p>
+<h3 id="刚性变换预测"><a href="#刚性变换预测" class="headerlink" title="刚性变换预测"></a>刚性变换预测</h3><blockquote>
+<p>在每次迭代i处给定x和y的逐点特征，我们将它们与从重叠掩模预测模块的中间层输出的特征级联。因此，<strong>用于回归变换的特征可以通过掩码预测分支中的分类信息来增强。</strong>同时，<strong>用于预测模板的特征得益于变换分支中的几何知识。</strong>然后，串联的特征被馈送到刚性变换回归网络，该网络产生7D向量，我们使用7D向量的前3个值来表示平移向量t∈R3，并且后4个值以四元数的形式表示3D旋转</p>
+</blockquote>
+<p>文章在提及之前的方法的时候有提到过他们不能充分的利用点云的几何知识，现在看来，是把预测掩码中的特征向量拿到刚性变换的预测中来利用几何知识。</p>
+<p>刚性变换的表示公式是：</p>
+<p><img src="https://pic3.zhimg.com/80/v2-ce192d938680a62874ea63dab2bf814a_720w.png" alt="img"></p>
+<p>其中 hxi,hyi 表示掩码预测模块中串联的特征向量。</p>
+<h3 id="刚性变换损失函数"><a href="#刚性变换损失函数" class="headerlink" title="刚性变换损失函数"></a>刚性变换损失函数</h3><p>用四元数{q,t}的方式表示损失函数</p>
+<p><img src="https://pic3.zhimg.com/80/v2-1b99fc41dfcbe334770c8e704f7928ea_720w.png" alt="img"></p>
+<p>其中下标g的是ground-truth</p>
+<blockquote>
+<p>我们注意到，在训练和推理过程中，使用ℓ1和ℓ2距离的组合可以略微提高性能。在文章的大多数实验中，λ被经验地设置为4.0。</p>
+</blockquote>
+<h3 id="总的损失函数是"><a href="#总的损失函数是" class="headerlink" title="总的损失函数是"></a>总的损失函数是</h3><p><img src="https://pic1.zhimg.com/80/v2-da995ae7f106367d8eac11124e7e5d98_720w.png" alt="img"></p>
+<h2 id="实验"><a href="#实验" class="headerlink" title="实验"></a>实验</h2><h3 id="数据集"><a href="#数据集" class="headerlink" title="数据集"></a>数据集</h3><p>实验的数据集有：</p>
+<p>1）<strong>Standford 3D Scan</strong> 使用该数据集来测试模型的泛化能力</p>
+<p>2）<strong>7Scenes</strong> 该数据集是在室内环境采集的</p>
+<p>3）<strong>ModelNet40</strong> 这个是需要讲一讲的数据集，也是这篇论文其中一个贡献产生的地方</p>
+<blockquote>
+<p>ModelNet40包含来自40个类别的CAD模型。以前的工作使用的是来自PointNet[21]的经过处理的数据，该方法用于配准任务有两个问题：(1)对于每个对象，它只包含从CAD模型采样的2,048个点。然而，在现实场景中，X中的点在Y中没有精确的对应。对该数据的训练会导致过拟合问题，甚至增加噪声或重采样。(2)它涉及一些轴对称类别，包括瓶、碗、锥、杯、花盆、灯、帐篷和花瓶，图4显示了一些例子。然而，为轴对称数据提供固定的地面真实是不合逻辑的，因为可以获得对<strong>称轴上的任意角度</strong>以进行准确配准。将标签固定在对称轴上没有任何意义</p>
+</blockquote>
+<p>我的理解就是有对称轴的话太好做了，如果标签在对称轴上可能只需要对对称轴完成匹配就是一个很好的精匹配。</p>
+<p>不同于以往的数据采集方式</p>
+<blockquote>
+<p>在本文中，我们提出了一种合适的数据生成方式。具体地说，我们用不同的随机种子从每个CAD模型中均匀采样2048个点40次，然后随机选择其中的2个作为X和Y。它保证我们可以获得每个对象的C240=780个组合。我们将从CAD模型中只采样一次的数据表示为一次采样(OS)数据，并将我们的数据称为两次采样(TS)数据。此外，我们简单地去掉了轴对称范畴。</p>
+</blockquote>
+<p><img src="https://pic4.zhimg.com/80/v2-cd5c974ad8902dbd5e6d4b9617966cf3_720w.jpg" alt="img">这里列举了一些轴对称数据</p>
+<h3 id="评价指标"><a href="#评价指标" class="headerlink" title="评价指标"></a>评价指标</h3><p>我们测量各向异性误差：旋转和平移的均方根误差(RMSE)和平均绝对误差(MAE)，以及各向同性误差：</p>
+<p><img src="https://pic1.zhimg.com/80/v2-dfb4771239f44e66aa3f8e6610391134_720w.png" alt="img"></p>
+<p>Rg 和 Rp 分别表示由四元数 qg 和 qp 转换的ground-truth旋转矩阵和预测旋转矩阵.</p>
+<p>如果刚性对齐是完美的，则所有指标都应为零。角度度量以度为单位</p>
+<h3 id="在ModelNet40上的结果"><a href="#在ModelNet40上的结果" class="headerlink" title="在ModelNet40上的结果"></a>在ModelNet40上的结果</h3><p>该方法在1）训练数据与测试数据类别相同且无噪声，2）训练数据与测试数据类别不同且无噪声，3）训练数据与测试数据类别相同且增加了高斯噪声。上的表现均优于以前的做法。数据如图：</p>
+<p><img src="https://pic3.zhimg.com/80/v2-9b9efab230942eceb84f0c910ae5990e_720w.jpg" alt="img">直接看三个类的Error(R)和Error(t)</p>
+<p>可视化的数据更加直观</p>
+<p><img src="https://pic2.zhimg.com/80/v2-a33375e3f57ecdf4d6bee549e3e8b0c9_720w.jpg" alt="img">分别是三个类别的结果</p>
+<p>该方法在具有高斯噪声的训练数据与测试数据类别不同的情况下依旧表现良好</p>
+<h3 id="在真实数据上的表现"><a href="#在真实数据上的表现" class="headerlink" title="在真实数据上的表现"></a>在真实数据上的表现</h3><p><img src="https://pic1.zhimg.com/80/v2-033e5dafcdae353c5925c6e6c41abbdc_720w.jpg" alt="img"></p>
+<p><img src="https://pic4.zhimg.com/80/v2-7f3a4b48cec3c699b4164cf6f34ea303_720w.jpg" alt="img"></p>
+<h2 id="Discussion"><a href="#Discussion" class="headerlink" title="Discussion"></a>Discussion</h2><h3 id="重叠掩码的效果"><a href="#重叠掩码的效果" class="headerlink" title="重叠掩码的效果"></a>重叠掩码的效果</h3><p>下图展示了重叠掩码的作用：</p>
+<p><img src="https://pic3.zhimg.com/80/v2-547b705714c8af3b68cecc09bc65fdd6_720w.jpg" alt="img"></p>
+<p>在最初的几次迭代中，全局特征差异很大，并且在给定不准确的重叠遮罩的情况下，输入对齐不佳。在连续迭代的情况下，全局特征差异变得非常小，而对齐和预测重叠掩码几乎是完美的。</p>
+<h3 id="鲁棒性证明"><a href="#鲁棒性证明" class="headerlink" title="鲁棒性证明"></a>鲁棒性证明</h3><p><img src="https://pic2.zhimg.com/80/v2-4a267c85e093dff6aeeaa03a1d139fd5_720w.jpg" alt="img"></p>
+<p>上图给出了在不同噪声下模型的性能，可以看出模型在不同程度的噪声表现出了相当的性能。</p>
+<h3 id="不同的重叠率"><a href="#不同的重叠率" class="headerlink" title="不同的重叠率"></a>不同的重叠率</h3><p>如图，该论文的方法在重叠率递减的情况下依旧展示了最好的性能</p>
+<p><img src="https://pic4.zhimg.com/80/v2-9b778255d2436bf0a41762608717fb07_720w.jpg" alt="img"></p>
+<h2 id="贡献"><a href="#贡献" class="headerlink" title="贡献"></a>贡献</h2><ol>
+<li>提出了一种基于全局特征的配准网络OMNet，该网络通过学习掩码来剔除非重叠区域，对噪声和不同的局部方式具有较强的鲁棒性。掩码预测和变换估计可以在迭代过程中相互加强</li>
+<li>揭示了在采用ModelNet40数据集进行配准时存在的过拟合问题和数据集中不合理的轴对称类别，提出了一种更适合配准任务的数据对生成方法</li>
+<li>在干净、有噪声和不同局部数据集下与其他工作进行了定性和定量比较，显示了最先进的性能。</li>
+</ol>
+<p>声明：本文仅仅作为我在学习道路上的一个记录，一些理解可能不准确，还恳请各位大佬指正。如果有侵犯到任何人的权益，请联系我，我会删除此文。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><p>全文：Xu H, Liu S, Wang G, et al. Omnet: Learning overlapping mask for partial-to-partial point cloud registration[C]//Proceedings of the IEEE/CVF International Conference on Computer Vision. 2021: 3132-3141.</p>
+<p>【1】Azuma R T. A survey of augmented reality[J]. Presence: teleoperators &amp; virtual environments, 1997, 6(4): 355-385.</p>
+<p>【2】Newcombe R A, Izadi S, Hilliges O, et al. Kinectfusion: Real-time dense surface mapping and tracking[C]//2011 10th IEEE international symposium on mixed and augmented reality. Ieee, 2011: 127-136.</p>
+<p>【3】Yurtsever E, Lambert J, Carballo A, et al. A survey of autonomous driving: Common practices and emerging technologies[J]. IEEE access, 2020, 8: 58443-58469.</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/point-cloud-registration/" rel="tag"># point cloud registration</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/08/18/%E3%80%90perusal%E3%80%91PointNet-Deep-Learning-on-Point-Sets-for-3D-Classification-and-Segmentation/" rel="prev" title="【perusal】PointNet: Deep Learning on Point Sets for 3D Classification and Segmentation">
+      <i class="fa fa-chevron-left"></i> 【perusal】PointNet: Deep Learning on Point Sets for 3D Classification and Segmentation
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AE%80%E4%BB%8B"><span class="nav-number">1.</span> <span class="nav-text">简介</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%A5%E5%BE%80%E6%96%B9%E6%B3%95%E4%BB%A5%E5%8F%8A%E7%BC%BA%E9%99%B7"><span class="nav-number">2.</span> <span class="nav-text">以往方法以及缺陷</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9F%BA%E4%BA%8E%E5%AF%B9%E5%BA%94%E7%82%B9%E5%8C%B9%E9%85%8D%E7%9A%84%E6%96%B9%E6%B3%95"><span class="nav-number">2.1.</span> <span class="nav-text">基于对应点匹配的方法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9F%BA%E4%BA%8E%E5%AF%B9%E5%BA%94%E7%82%B9%E5%8C%B9%E9%85%8D%E7%9A%84%E6%96%B9%E6%B3%95%E7%9A%84%E7%BC%BA%E9%99%B7"><span class="nav-number">2.2.</span> <span class="nav-text">基于对应点匹配的方法的缺陷</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9F%BA%E4%BA%8E%E5%85%A8%E5%B1%80%E7%9A%84%E9%85%8D%E5%87%86%E6%96%B9%E6%B3%95"><span class="nav-number">2.3.</span> <span class="nav-text">基于全局的配准方法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9F%BA%E4%BA%8E%E5%85%A8%E5%B1%80%E7%9A%84%E9%85%8D%E5%87%86%E6%96%B9%E6%B3%95%E7%9A%84%E7%BC%BA%E9%99%B7"><span class="nav-number">2.4.</span> <span class="nav-text">基于全局的配准方法的缺陷</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%83%A8%E5%88%86%E5%88%B0%E9%83%A8%E5%88%86%E7%9A%84%E9%85%8D%E5%87%86%E6%96%B9%E6%B3%95"><span class="nav-number">2.5.</span> <span class="nav-text">部分到部分的配准方法</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#OMNet"><span class="nav-number">3.</span> <span class="nav-text">OMNet</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BE%93%E5%85%A5"><span class="nav-number">3.1.</span> <span class="nav-text">输入</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%90%84%E8%87%AA%E7%89%B9%E5%BE%81%E6%8F%90%E5%8F%96"><span class="nav-number">3.2.</span> <span class="nav-text">各自特征提取</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%9E%8D%E5%90%88%E7%89%B9%E5%BE%81%E6%8F%90%E5%8F%96"><span class="nav-number">3.3.</span> <span class="nav-text">融合特征提取</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%96%B0%E7%9A%84%E6%8E%A9%E7%A0%81%E9%A2%84%E6%B5%8B"><span class="nav-number">3.4.</span> <span class="nav-text">新的掩码预测</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8E%A9%E7%A0%81%E9%A2%84%E6%B5%8B%E7%9A%84%E6%8D%9F%E5%A4%B1%E5%87%BD%E6%95%B0"><span class="nav-number">3.5.</span> <span class="nav-text">掩码预测的损失函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%9A%E6%80%A7%E5%8F%98%E6%8D%A2%E9%A2%84%E6%B5%8B"><span class="nav-number">3.6.</span> <span class="nav-text">刚性变换预测</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%9A%E6%80%A7%E5%8F%98%E6%8D%A2%E6%8D%9F%E5%A4%B1%E5%87%BD%E6%95%B0"><span class="nav-number">3.7.</span> <span class="nav-text">刚性变换损失函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%80%BB%E7%9A%84%E6%8D%9F%E5%A4%B1%E5%87%BD%E6%95%B0%E6%98%AF"><span class="nav-number">3.8.</span> <span class="nav-text">总的损失函数是</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%9E%E9%AA%8C"><span class="nav-number">4.</span> <span class="nav-text">实验</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E9%9B%86"><span class="nav-number">4.1.</span> <span class="nav-text">数据集</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%AF%84%E4%BB%B7%E6%8C%87%E6%A0%87"><span class="nav-number">4.2.</span> <span class="nav-text">评价指标</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9C%A8ModelNet40%E4%B8%8A%E7%9A%84%E7%BB%93%E6%9E%9C"><span class="nav-number">4.3.</span> <span class="nav-text">在ModelNet40上的结果</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9C%A8%E7%9C%9F%E5%AE%9E%E6%95%B0%E6%8D%AE%E4%B8%8A%E7%9A%84%E8%A1%A8%E7%8E%B0"><span class="nav-number">4.4.</span> <span class="nav-text">在真实数据上的表现</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Discussion"><span class="nav-number">5.</span> <span class="nav-text">Discussion</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%87%8D%E5%8F%A0%E6%8E%A9%E7%A0%81%E7%9A%84%E6%95%88%E6%9E%9C"><span class="nav-number">5.1.</span> <span class="nav-text">重叠掩码的效果</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%B2%81%E6%A3%92%E6%80%A7%E8%AF%81%E6%98%8E"><span class="nav-number">5.2.</span> <span class="nav-text">鲁棒性证明</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%8D%E5%90%8C%E7%9A%84%E9%87%8D%E5%8F%A0%E7%8E%87"><span class="nav-number">5.3.</span> <span class="nav-text">不同的重叠率</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%B4%A1%E7%8C%AE"><span class="nav-number">6.</span> <span class="nav-text">贡献</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">7.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Anthony"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">Anthony</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">3</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/limyoona900530" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;limyoona900530" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="/2548361244@qq.com" title="E-Mail → 2548361244@qq.com"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Anthony</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+    <span title="Symbols count total">15k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="Reading time total">13 mins.</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
